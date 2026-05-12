@@ -1,25 +1,29 @@
-import customtkinter as ctk
-from tkinter import ttk
+# main.py
+# Điểm khởi đầu của ứng dụng: tạo giao diện, tạo controller và chạy.
 
-app = ctk.CTk()
-app.title("HealthRecord")
-app.geometry("800x500")
+from views.main_view import MainView                  # Import lớp MainView
+from controllers.patient_controller import PatientController   # Import controller
 
-# Toolbar
-toolbar = ctk.CTkFrame(app)
-toolbar.pack(fill="x", padx=10, pady=5)
-btn_test = ctk.CTkButton(toolbar, text="Test")
-btn_test.pack(side="left", padx=5)
+if __name__ == "__main__":
+    # Bước 1: Tạo cửa sổ chính (view)
+    app = MainView()
+    
+    # Bước 2: Tạo controller, truyền view vào. Controller sẽ tự động gắn và tải dữ liệu.
+    controller = PatientController(app)
+    
+    # Bước 3: Chạy vòng lặp chính của ứng dụng.
+    app.mainloop()# main.py
+# Điểm khởi đầu của ứng dụng: tạo giao diện, tạo controller và chạy.
 
-# Bảng Treeview
-tree = ttk.Treeview(app, columns=("ID","Họ tên","Năm sinh"), show="headings")
-tree.heading("ID", text="ID")
-tree.heading("Họ tên", text="Họ tên")
-tree.heading("Năm sinh", text="Năm sinh")
-tree.pack(fill="both", expand=True, padx=10, pady=10)
+from views.main_view import MainView                  # Import lớp MainView
+from controllers.patient_controller import PatientController   # Import controller
 
-# Thêm dòng mẫu
-tree.insert("", "end", values=(1, "Nguyễn Văn A", 1990))
-tree.insert("", "end", values=(2, "Trần Thị B", 1995))
-
-app.mainloop()
+if __name__ == "__main__":
+    # Bước 1: Tạo cửa sổ chính (view)
+    app = MainView()
+    
+    # Bước 2: Tạo controller, truyền view vào. Controller sẽ tự động gắn và tải dữ liệu.
+    controller = PatientController(app)
+    
+    # Bước 3: Chạy vòng lặp chính của ứng dụng.
+    app.mainloop()
