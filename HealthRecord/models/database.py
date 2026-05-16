@@ -27,14 +27,8 @@ def get_connection():
     return conn
 
 def init_db():
-    """
-    Khởi tạo bảng patients nếu bảng chưa tồn tại.
-    Bảng gồm các cột: id (tự động tăng), name (tên), birth_year (năm sinh), gender, phone, address.
-    """
-    # Sử dụng 'with' để tự động đóng kết nối sau khi thực hiện xong.
+    """Khởi tạo bảng patients và medical_visits nếu chưa tồn tại"""
     with get_connection() as conn:
-        # conn.execute() thực thi câu lệnh SQL.
-        # CREATE TABLE IF NOT EXISTS: chỉ tạo bảng nếu chưa có.
         conn.execute("""
             CREATE TABLE IF NOT EXISTS patients (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -45,5 +39,19 @@ def init_db():
                 address TEXT
             )
         """)
-        # Ghi log thông báo đã khởi tạo database.
-        logger.info("Database initialized at %s", DB_PATH)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS medical_visits (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                patient_id INTEGER NOT NULL,
+                visit_date TEXT NOT NULL,
+                height REAL,
+                weight REAL,
+                systolic INTEGER,
+                diastolic INTEGER,
+                diagnosis TEXT,
+                prescription TEXT,
+                FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE
+            )
+        """)
+        conn.commit()
+        logger.info("Database initialized with patients and medical_visits tables")

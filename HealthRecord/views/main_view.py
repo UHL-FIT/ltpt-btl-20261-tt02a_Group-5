@@ -1,40 +1,30 @@
 # views/main_view.py
-# Giao diện chính của ứng dụng: cửa sổ, toolbar, bảng Treeview, thanh trạng thái.
+# Giao diện chính của ứng dụng: cửa sổ, toolbar, bảng Treeview, thống kê.
 
 import customtkinter as ctk
 from tkinter import ttk, messagebox
-from models import patient as model   # Import model để gọi trực tiếp (sẽ thay bằng controller sau)
+from models import patient as model
+from views.add_edit_patient import AddEditPatientWindow
 
 class MainView(ctk.CTk):
-    """
-    Lớp MainView kế thừa từ CTk (cửa sổ chính của customtkinter).
-    Quản lý toàn bộ giao diện đồ họa.
-    """
-
     def __init__(self):
-        # Gọi hàm khởi tạo của lớp cha (ctk.CTk) để thiết lập cửa sổ cơ bản.
         super().__init__()
 
-        # --- Các thiết lập chung cho cửa sổ ---
-        # Đặt tiêu đề cửa sổ (dòng chữ trên thanh tiêu đề)
+        # --- Cài đặt cửa sổ ---
         self.title("HealthRecord - Quản lý hồ sơ bệnh nhân")
-        # Đặt kích thước cửa sổ: rộng 900 pixel, cao 500 pixel
-        self.geometry("900x500")
-        # Đặt chế độ giao diện: "dark" (nền tối) hoặc "light". Ở đây chọn dark.
+        self.geometry("1200x600")
         ctk.set_appearance_mode("dark")
-        # Đặt chủ đề màu sắc chính: "blue" (xanh dương)
         ctk.set_default_color_theme("blue")
 
-        # Biến để lưu controller (sẽ được gán sau)
+        # Controller sẽ được gán sau
         self.controller = None
 
-        # --- Tạo thanh toolbar (khung chứa các nút) ---
+        # --- Toolbar (thanh công cụ) ---
         toolbar = ctk.CTkFrame(self)
-        toolbar.pack(fill="x", padx=10, pady=10)    # Kéo dài ngang, lề trái/phải 10, trên/dưới 10
+        toolbar.pack(fill="x", padx=10, pady=10)
 
-        # Khung chứa các nút, có thể cuộn ngang nếu quá nhiều nút và cửa sổ hẹp.
-        # CTkScrollableFrame cho phép cuộn; orientation="horizontal" là cuộn ngang.
-        btn_container = ctk.CTkScrollableFrame(toolbar, orientation="horizontal", height=45)
+        # Khung chứa các nút (có thể cuộn ngang)
+        btn_container = ctk.CTkScrollableFrame(toolbar, orientation="horizontal", height=50)
         btn_container.pack(side="left", fill="x", expand=True)
 
         # Nút Thêm
@@ -45,105 +35,112 @@ class MainView(ctk.CTk):
         self.btn_edit = ctk.CTkButton(btn_container, text="✏️ Sửa", command=self.on_edit)
         self.btn_edit.pack(side="left", padx=3)
 
-        # Nút Xóa (màu đỏ)
+        # Nút Xóa
         self.btn_delete = ctk.CTkButton(btn_container, text="🗑️ Xóa", fg_color="red", command=self.on_delete)
         self.btn_delete.pack(side="left", padx=3)
 
-        # --- Khung tìm kiếm (bên phải toolbar) ---
-        search_frame = ctk.CTkFrame(toolbar)
-        search_frame.pack(side="right", padx=5)   # Đặt bên phải, cách lề 5 pixel
+        # Nút Lịch sử khám
+        self.btn_history = ctk.CTkButton(btn_container, text="📋 Lịch sử khám", command=self.on_history)
+        self.btn_history.pack(side="left", padx=3)
 
+        # Nút Import CSV
+        self.btn_import = ctk.CTkButton(btn_container, text="📂 Import CSV", command=lambda: self.controller.import_csv() if self.controller else None)
+        self.btn_import.pack(side="left", padx=3)
+
+        # Nút Export CSV
+        self.btn_export = ctk.CTkButton(btn_container, text="💾 Export CSV", command=lambda: self.controller.export_csv() if self.controller else None)
+        self.btn_export.pack(side="left", padx=3)
+
+        # Nút Xuất mẫu CSV
+        self.btn_template = ctk.CTkButton(btn_container, text="📄 Mẫu CSV", command=lambda: self.controller.export_template_csv() if self.controller else None)
+        self.btn_template.pack(side="left", padx=3)
+
+        # Nút About
+        self.btn_about = ctk.CTkButton(btn_container, text="ℹ️ About", command=self.show_about)
+        self.btn_about.pack(side="left", padx=3)
+
+        # --- Khung tìm kiếm (bên phải) ---
+        search_frame = ctk.CTkFrame(toolbar)
+        search_frame.pack(side="right", padx=5)
         self.entry_search = ctk.CTkEntry(search_frame, placeholder_text="Tìm theo tên", width=150)
         self.entry_search.pack(side="left", padx=3)
-
         self.btn_search = ctk.CTkButton(search_frame, text="Tìm", command=self.on_search)
         self.btn_search.pack(side="left")
 
-        # --- Bảng hiển thị danh sách bệnh nhân (Treeview) ---
-        # Các cột của bảng: id, name, birth_year, gender, phone, address
+        # --- Bảng hiển thị danh sách bệnh nhân ---
         columns = ("id", "name", "birth_year", "gender", "phone", "address")
-        # Tạo Treeview, show="headings" chỉ hiện tiêu đề cột.
         self.tree = ttk.Treeview(self, columns=columns, show="headings")
-
-        # Đặt tiêu đề cho mỗi cột (những tiêu đề này hiển thị trên giao diện)
-        self.tree.heading("id", text="ID")                 # Cột ID
-        self.tree.heading("name", text="Họ tên")           # Cột Họ tên
-        self.tree.heading("birth_year", text="Năm sinh")   # Cột Năm sinh
-        self.tree.heading("gender", text="Giới tính")      # Cột Giới tính
-        self.tree.heading("phone", text="SĐT")             # Cột Số điện thoại
-        self.tree.heading("address", text="Địa chỉ")       # Cột Địa chỉ
-
-        # Đặt độ rộng cho từng cột (giá trị pixel)
-        self.tree.column("id", width=50, anchor="center")       # Rộng 50, canh giữa
-        self.tree.column("name", width=180)                     # Rộng 180, canh trái mặc định
+        self.tree.heading("id", text="ID")
+        self.tree.heading("name", text="Họ tên")
+        self.tree.heading("birth_year", text="Năm sinh")
+        self.tree.heading("gender", text="Giới tính")
+        self.tree.heading("phone", text="SĐT")
+        self.tree.heading("address", text="Địa chỉ")
+        self.tree.column("id", width=50, anchor="center")
+        self.tree.column("name", width=180)
         self.tree.column("birth_year", width=80, anchor="center")
         self.tree.column("gender", width=80, anchor="center")
         self.tree.column("phone", width=120, anchor="center")
         self.tree.column("address", width=150)
 
-        # Thêm thanh cuộn dọc cho bảng
+        # Thanh cuộn dọc
         scrollbar = ttk.Scrollbar(self, orient="vertical", command=self.tree.yview)
         self.tree.configure(yscrollcommand=scrollbar.set)
-
-        # Đặt bảng và thanh cuộn vào cửa sổ
         self.tree.pack(side="left", fill="both", expand=True, padx=(10,0), pady=10)
         scrollbar.pack(side="right", fill="y", padx=(0,10), pady=10)
 
-        # --- Thanh trạng thái (status bar) ở dưới cùng ---
-        self.status_label = ctk.CTkLabel(self, text="Sẵn sàng", anchor="w")
-        self.status_label.pack(side="bottom", fill="x", padx=10, pady=5)
+        # --- Khung thống kê (thay thế thanh trạng thái) ---
+        stats_frame = ctk.CTkFrame(self)
+        stats_frame.pack(side="bottom", fill="x", padx=10, pady=5)
 
-    # ------------------ Các phương thức kết nối với controller ------------------
+        self.lbl_total = ctk.CTkLabel(stats_frame, text="Tổng: 0", font=("Arial", 12, "bold"))
+        self.lbl_total.pack(side="left", padx=15)
+
+        self.lbl_male = ctk.CTkLabel(stats_frame, text="Nam: 0", font=("Arial", 12))
+        self.lbl_male.pack(side="left", padx=15)
+
+        self.lbl_female = ctk.CTkLabel(stats_frame, text="Nữ: 0", font=("Arial", 12))
+        self.lbl_female.pack(side="left", padx=15)
+
+        self.lbl_avg_age = ctk.CTkLabel(stats_frame, text="Tuổi TB: 0.0", font=("Arial", 12))
+        self.lbl_avg_age.pack(side="left", padx=15)
+
+    # ------------------ Kết nối controller ------------------
     def set_controller(self, controller):
-        """
-        Gắn đối tượng controller vào view, đồng thời tải dữ liệu lần đầu.
-        Tham số controller: instance của PatientController.
-        """
         self.controller = controller
-        self.refresh_table()   # Tải dữ liệu từ model lên bảng
+        self.refresh_table()
 
+    # ------------------ Cập nhật bảng và thống kê ------------------
     def refresh_table(self):
-        """
-        Lấy dữ liệu từ controller (thông qua controller.get_all_patients()) và cập nhật bảng.
-        Xóa toàn bộ dòng cũ, sau đó thêm từng dòng mới từ DataFrame.
-        """
-        # Gọi controller để lấy DataFrame chứa danh sách bệnh nhân
         df = self.controller.get_all_patients()
-        
-        # Xóa tất cả các dòng hiện có trong Treeview
+        # Xóa bảng cũ
         for row in self.tree.get_children():
             self.tree.delete(row)
-        
-        # Duyệt từng dòng trong DataFrame (df.iterrows() trả về (index, row))
+        # Thêm dữ liệu mới
         for _, row in df.iterrows():
-            # Chèn một dòng vào cuối bảng, giá trị lấy từ row (các cột tương ứng)
             self.tree.insert("", "end", values=(
                 row['id'], row['name'], row['birth_year'],
                 row['gender'], row['phone'], row['address']
             ))
-        
-        # Cập nhật thanh trạng thái: hiển thị tổng số bệnh nhân
-        # Ví dụ: "Tổng số bệnh nhân: 5"
-        self.status_label.configure(text=f"Tổng số bệnh nhân: {len(df)}")
+        # Cập nhật thống kê
+        total = len(df)
+        male = len(df[df['gender'] == 'Nam']) if total > 0 else 0
+        female = len(df[df['gender'] == 'Nữ']) if total > 0 else 0
+        current_year = 2025
+        avg_age = (current_year - df['birth_year']).mean() if total > 0 else 0
+        self.lbl_total.configure(text=f"Tổng: {total}")
+        self.lbl_male.configure(text=f"Nam: {male}")
+        self.lbl_female.configure(text=f"Nữ: {female}")
+        self.lbl_avg_age.configure(text=f"Tuổi TB: {avg_age:.1f}")
 
+    # ------------------ Lấy bệnh nhân đang chọn ------------------
     def get_selected_patient(self):
-        """
-        Lấy thông tin bệnh nhân đang được chọn trên bảng.
-        Trả về một dictionary (từ điển) gồm các key: id, name, birth_year, gender, phone, address.
-        Nếu không có dòng nào được chọn, hiện cảnh báo và trả về None.
-        """
-        # tree.selection() trả về tuple các item ID đang được chọn (ở chế độ chọn một dòng)
         selected = self.tree.selection()
         if not selected:
-            # messagebox.showwarning() hiển thị cửa sổ cảnh báo với tiêu đề và nội dung
             messagebox.showwarning("Chọn bệnh nhân", "Vui lòng chọn một bệnh nhân")
             return None
-        
-        # Lấy item đầu tiên (vì chúng ta chỉ cho chọn một dòng)
         item = self.tree.item(selected[0])
-        # item['values'] là tuple các giá trị của dòng đó (theo thứ tự các cột)
         values = item['values']
-        # Tạo dictionary với các tên trường tương ứng
         return {
             "id": values[0],
             "name": values[1],
@@ -153,65 +150,56 @@ class MainView(ctk.CTk):
             "address": values[5]
         }
 
-    # ------------------ Các hàm xử lý sự kiện từ nút bấm ------------------
+    # ------------------ Xử lý sự kiện ------------------
     def on_add(self):
-        """
-        Xử lý khi nhấn nút Thêm. Ở bước 4, chưa có popup riêng, tạm dùng simpledialog
-        để nhập tên bệnh nhân (các trường khác để mặc định).
-        """
-        from tkinter import simpledialog
-        # simpledialog.askstring() hiển thị hộp thoại yêu cầu nhập chuỗi.
-        # Dòng chữ hiển thị trên hộp thoại: "Nhập họ tên:"
-        name = simpledialog.askstring("Thêm bệnh nhân", "Nhập họ tên:")
-        if name:
-            # Gọi controller để thêm bệnh nhân (các trường khác dùng giá trị mặc định)
-            self.controller.add_patient(name, 2000, "Nam", "", "")
-            # Tải lại bảng để hiển thị dữ liệu mới
-            self.refresh_table()
+        AddEditPatientWindow(self, self.controller, edit_mode=False)
 
     def on_edit(self):
-        """
-        Xử lý khi nhấn nút Sửa. Lấy bệnh nhân đang chọn, yêu cầu nhập tên mới.
-        """
-        data = self.get_selected_patient()
-        if not data:
-            return
-        from tkinter import simpledialog
-        new_name = simpledialog.askstring("Sửa tên", "Nhập tên mới:", initialvalue=data['name'])
-        if new_name and new_name != data['name']:
-            self.controller.update_patient(
-                data['id'], new_name, data['birth_year'],
-                data['gender'], data['phone'], data['address']
-            )
-            self.refresh_table()
-
-    def on_delete(self):
-        """
-        Xóa bệnh nhân đang chọn sau khi xác nhận.
-        """
         data = self.get_selected_patient()
         if data:
-            # messagebox.askyesno() hiện hộp thoại hỏi Có/Không, trả về True nếu chọn Yes.
-            # Dòng chữ hiển thị: "Bạn có chắc muốn xóa Nguyễn Văn A?"
-            if messagebox.askyesno("Xác nhận xóa", f"Bạn có chắc muốn xóa {data['name']}?"):
-                self.controller.delete_patient(data['id'])
-                self.refresh_table()
+            AddEditPatientWindow(self, self.controller, edit_mode=True, patient_data=data)
+
+    def on_delete(self):
+        data = self.get_selected_patient()
+        if data and messagebox.askyesno("Xác nhận xóa", f"Bạn có chắc muốn xóa {data['name']}?"):
+            self.controller.delete_patient(data['id'])
+
+    def on_history(self):
+        data = self.get_selected_patient()
+        if data:
+            from views.medical_history import MedicalHistoryWindow
+            MedicalHistoryWindow(self, self.controller, data['id'], data['name'])
 
     def on_search(self):
-        """
-        Tìm kiếm bệnh nhân theo tên (không phân biệt hoa thường).
-        Lấy từ khóa từ ô search_entry, lọc DataFrame, hiển thị kết quả lên bảng.
-        """
-        keyword = self.entry_search.get().strip().lower()   # Lấy chuỗi nhập, bỏ khoảng trắng đầu cuối, chuyển thành chữ thường
-        # Lấy toàn bộ dữ liệu từ controller
+        keyword = self.entry_search.get().strip().lower()
         df = self.controller.get_all_patients()
         if keyword:
-            # Lọc các dòng có tên chứa keyword (na=False bỏ qua giá trị null)
             df = df[df['name'].str.lower().str.contains(keyword, na=False)]
-        # Xóa bảng cũ và hiển thị kết quả lọc
+        # Hiển thị kết quả tìm kiếm lên bảng (tạm thời, không ảnh hưởng refresh sau)
         for row in self.tree.get_children():
             self.tree.delete(row)
         for _, r in df.iterrows():
-            self.tree.insert("", "end", values=(r['id'], r['name'], r['birth_year'], r['gender'], r['phone'], r['address']))
-        # Hiển thị thông báo trên thanh trạng thái: số lượng tìm thấy và tổng số
-        self.status_label.configure(text=f"Tìm thấy: {len(df)} bệnh nhân (trên tổng số {len(self.controller.get_all_patients())})")
+            self.tree.insert("", "end", values=(
+                r['id'], r['name'], r['birth_year'], r['gender'], r['phone'], r['address']
+            ))
+        self.lbl_total.configure(text=f"Tìm thấy: {len(df)} (tổng: {len(self.controller.get_all_patients())})")
+
+    def show_about(self):
+        messagebox.showinfo(
+            "Giới thiệu - HealthRecord",
+            "📋 PHẦN MỀM QUẢN LÝ HỒ SƠ BỆNH NHÂN\n\n"
+            "Phiên bản: 1.0.0\n"
+            "Tác giả: Nhóm 5 - Lập trình Python\n"
+            "   Trần Minh Hiếu\n"
+            "   Nguyễn Đức Đại Nam\n"
+            "   Nguyễn Quang Thái\n"
+            "   Hà Văn Tú\n"
+            "Trường Đại học Hạ Long (UHL)\n"
+            "Ngày phát hành: 05/2026\n\n"
+            "Chức năng chính:\n"
+            "• Quản lý bệnh nhân (Thêm, Sửa, Xóa, Tìm kiếm)\n"
+            "• Import/Export dữ liệu CSV\n"
+            "• Thống kê sĩ số, giới tính, tuổi trung bình\n"
+            "• Lưu trữ dữ liệu bằng SQLite\n\n"
+            "© 2026 - Bản quyền thuộc về nhóm phát triển."
+        )
