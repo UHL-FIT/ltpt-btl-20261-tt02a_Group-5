@@ -7,7 +7,7 @@
 # ============================================================================
 # 1. IMPORT CÁC THƯ VIỆN VÀ MODULE
 # ============================================================================
-import customtkinter as ctk                # Lệnh import thư viện customtkinter (lệnh thư viện), đặt tên là ctk (do người dùng đặt)
+import customtkinter as ctk               # Lệnh import thư viện customtkinter (lệnh thư viện), đặt tên là ctk (do người dùng đặt)
 from tkinter import ttk, messagebox       # Lệnh import ttk và messagebox từ tkinter (lệnh thư viện)
 import platform                           # Lệnh import module platform (lệnh thư viện)
 import pandas as pd                       # Lệnh import pandas, đặt tên là pd (lệnh thư viện)
@@ -85,6 +85,7 @@ class MainView(ctk.CTk):
         # 2.1.3. Cài đặt cửa sổ gốc
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         self.geometry("1240x670")          # Đặt kích thước cửa sổ (lệnh thư viện) – rộng 1240px, cao 670px
+        self.minsize(900, 300)   # chiều rộng tối thiểu 900, chiều cao tối thiểu 500
         ctk.set_appearance_mode("dark")    # Đặt chế độ giao diện của customtkinter là "dark" (lệnh thư viện)
         self.configure(fg_color=self.THEME_CONFIG["window_bg"])
         # Dòng trên: Đặt màu nền của cửa sổ (lệnh thư viện configure) – lấy từ theme
@@ -257,17 +258,25 @@ class MainView(ctk.CTk):
         )
         self.btn_refresh.pack(side="left", padx=(5, 20))  # Lề trái 5, phải 20
 
+                # ====================================================================
+        # 2.1.6. BẢNG HIỂN THỊ DỮ LIỆU (TREEVIEW PANEL) + THANH THỐNG KÊ (FOOTER PANEL)
         # ====================================================================
-        # 2.1.6. BẢNG HIỂN THỊ DỮ LIỆU (TREEVIEW PANEL)
-        # ====================================================================
+        # Tạo scrollable frame bao container để có thanh cuộn dọc khi cửa sổ quá nhỏ,
+        # giúp người dùng cuộn xuống thấy thanh thống kê.
+        self.table_container = ctk.CTkScrollableFrame(self, orientation="vertical", fg_color="transparent")
+        # Đặt container chiếm toàn bộ không gian còn lại (sau toolbar và search panel), co giãn cả 2 chiều
+        self.table_container.pack(fill="both", expand=True, padx=15, pady=8)
+
+        # ---------- Khung chứa bảng (Treeview) ----------
         self.tree_frame = ctk.CTkFrame(      # Tạo khung chứa bảng – lệnh thư viện CTkFrame
-            self,
-            fg_color=self.THEME_CONFIG["card_bg"],
-            border_color=self.THEME_CONFIG["border_color"],
+            self.table_container,            # Gắn vào container thay vì self
+            fg_color="#2C3E50",              # Màu nền xanh đen (có thể đổi màu tùy ý)
+            border_color="#E74C3C",          # Màu viền đỏ (có thể đổi màu tùy ý)
             border_width=1, corner_radius=16
         )
-        self.tree_frame.pack(fill="both", expand=True, padx=15, pady=8)
-        # Dòng trên: Đặt khung chiếm toàn bộ không gian còn lại (lệnh thư viện pack)
+        # Đặt khung bảng chiếm hầu hết không gian trong container, co giãn cả 2 chiều,
+        # có khoảng cách dưới 10px để tách biệt với footer.
+        self.tree_frame.pack(fill="both", expand=True, pady=(0, 10))
 
         self.style = ttk.Style()             # Tạo đối tượng Style để tùy chỉnh giao diện Treeview (lệnh thư viện)
         self.style.theme_use("clam")         # Chọn theme "clam" (lệnh thư viện)
@@ -293,17 +302,15 @@ class MainView(ctk.CTk):
         scrollbar.pack(side="right", fill="y", padx=(0, 10), pady=10)
         # Dòng trên: Đặt thanh cuộn bên phải, kéo dãn dọc, lề phải 10
 
-        # ====================================================================
-        # 2.1.7. THANH THỐNG KÊ (FOOTER PANEL)
-        # ====================================================================
+        # ---------- Khung thống kê (Footer) – nằm dưới bảng, vẫn trong container ----------
         self.stats_frame = ctk.CTkFrame(     # Tạo khung thống kê dưới đáy – lệnh thư viện CTkFrame
-            self,
+            self.table_container,            # Gắn vào container, nằm dưới tree_frame
             fg_color="#15181E",
             border_color=self.THEME_CONFIG["border_color"],
             border_width=1, corner_radius=12
         )
-        self.stats_frame.pack(side="bottom", fill="x", padx=15, pady=(5, 15))
-        # Dòng trên: Đặt khung ở dưới cùng, kéo dài ngang (lệnh thư viện pack)
+        self.stats_frame.pack(fill="x", side="bottom", pady=(5, 0))
+        # Dòng trên: Đặt khung ở dưới cùng của container, kéo dài ngang (lệnh thư viện pack)
 
         # Các label thống kê
         self.lbl_total = ctk.CTkLabel(       # Label tổng số bệnh nhân – lệnh thư viện
