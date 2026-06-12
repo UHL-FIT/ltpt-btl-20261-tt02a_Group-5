@@ -1,4 +1,0 @@
-
-customtkinter
-pandas
-google-genai==1.16.1
